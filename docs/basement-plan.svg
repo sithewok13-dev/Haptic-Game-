@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="780" height="570" style="background:#111">
+<rect x="30" y="240" width="180" height="150" fill="#222"/>
+<text x="34" y="254" fill="#888" font-size="11">pumpRoom</text>
+<rect x="210" y="282.0" width="360" height="48.0" fill="#222"/>
+<text x="214" y="296.0" fill="#888" font-size="11">corridor</text>
+<rect x="270" y="132.0" width="150" height="150.0" fill="#222"/>
+<text x="274" y="146.0" fill="#888" font-size="11">ventRoom</text>
+<rect x="570" y="210" width="150" height="180" fill="#222"/>
+<text x="574" y="224" fill="#888" font-size="11">junction</text>
+<rect x="540" y="390" width="210" height="150" fill="#222"/>
+<text x="544" y="404" fill="#888" font-size="11">storage</text>
+<rect x="600" y="30" width="90" height="180" fill="#222"/>
+<text x="604" y="44" fill="#888" font-size="11">stairwell</text>
+<line x1="30.0" y1="390.0" x2="210" y2="390" stroke="#ddd" stroke-width="2"/>
+<line x1="210.0" y1="390.0" x2="210.0" y2="324.0" stroke="#ddd" stroke-width="2"/>
+<line x1="210.0" y1="288.0" x2="210" y2="240" stroke="#ddd" stroke-width="2"/>
+<line x1="210.0" y1="240.0" x2="30" y2="240" stroke="#ddd" stroke-width="2"/>
+<line x1="30.0" y1="240.0" x2="30" y2="390" stroke="#ddd" stroke-width="2"/>
+<line x1="210.0" y1="330.0" x2="570" y2="330" stroke="#ddd" stroke-width="2"/>
+<line x1="570.0" y1="282.0" x2="351.0" y2="282.0" stroke="#ddd" stroke-width="2"/>
+<line x1="315.0" y1="282.0" x2="210" y2="282.0" stroke="#ddd" stroke-width="2"/>
+<line x1="210.0" y1="282.0" x2="210.0" y2="288.0" stroke="#ddd" stroke-width="2"/>
+<line x1="210.0" y1="324.0" x2="210" y2="330" stroke="#ddd" stroke-width="2"/>
+<line x1="270.0" y1="282.0" x2="315.0" y2="282.0" stroke="#ddd" stroke-width="2"/>
+<line x1="351.0" y1="282.0" x2="420" y2="282.0" stroke="#ddd" stroke-width="2"/>
+<line x1="420.0" y1="282.0" x2="420" y2="132.0" stroke="#ddd" stroke-width="2"/>
+<line x1="420.0" y1="132.0" x2="270" y2="132.0" stroke="#ddd" stroke-width="2"/>
+<line x1="270.0" y1="132.0" x2="270" y2="282.0" stroke="#ddd" stroke-width="2"/>
+<line x1="570.0" y1="390.0" x2="624.0" y2="390.0" stroke="#ddd" stroke-width="2"/>
+<line x1="666.0" y1="390.0" x2="720" y2="390" stroke="#ddd" stroke-width="2"/>
+<line x1="720.0" y1="390.0" x2="720" y2="210" stroke="#ddd" stroke-width="2"/>
+<line x1="720.0" y1="210.0" x2="666.0" y2="210.0" stroke="#ddd" stroke-width="2"/>
+<line x1="624.0" y1="210.0" x2="570" y2="210" stroke="#ddd" stroke-width="2"/>
+<line x1="570.0" y1="210.0" x2="570.0" y2="282.0" stroke="#ddd" stroke-width="2"/>
+<line x1="570.0" y1="330.0" x2="570" y2="390" stroke="#ddd" stroke-width="2"/>
+<line x1="540.0" y1="540.0" x2="750" y2="540" stroke="#ddd" stroke-width="2"/>
+<line x1="750.0" y1="540.0" x2="750" y2="390" stroke="#ddd" stroke-width="2"/>
+<line x1="750.0" y1="390.0" x2="666.0" y2="390.0" stroke="#ddd" stroke-width="2"/>
+<line x1="624.0" y1="390.0" x2="540" y2="390" stroke="#ddd" stroke-width="2"/>
+<line x1="540.0" y1="390.0" x2="540" y2="540" stroke="#ddd" stroke-width="2"/>
+<line x1="600.0" y1="210.0" x2="624.0" y2="210.0" stroke="#ddd" stroke-width="2"/>
+<line x1="666.0" y1="210.0" x2="690" y2="210" stroke="#ddd" stroke-width="2"/>
+<line x1="690.0" y1="210.0" x2="690" y2="30" stroke="#ddd" stroke-width="2"/>
+<line x1="690.0" y1="30.0" x2="600" y2="30" stroke="#ddd" stroke-width="2"/>
+<line x1="600.0" y1="30.0" x2="600" y2="210" stroke="#ddd" stroke-width="2"/>
+<line x1="210" y1="324.0" x2="210" y2="288.0" stroke="#4c4" stroke-width="3"/>
+<line x1="315.0" y1="282.0" x2="351.0" y2="282.0" stroke="#4c4" stroke-width="3"/>
+<line x1="570" y1="330.0" x2="570" y2="282.0" stroke="#4c4" stroke-width="3"/>
+<line x1="624.0" y1="210" x2="666.0" y2="210" stroke="#4c4" stroke-width="3"/>
+<line x1="624.0" y1="390" x2="666.0" y2="390" stroke="#4c4" stroke-width="3"/>
+<circle cx="60.0" cy="261.0" r="5" fill="#fa0"/><text x="67.0" y="265.0" fill="#fa0" font-size="11">drip</text>
+<circle cx="390.0" cy="291.0" r="5" fill="#fa0"/><text x="397.0" y="295.0" fill="#fa0" font-size="11">pipes</text>
+<circle cx="399.0" cy="147.0" r="5" fill="#fa0"/><text x="406.0" y="151.0" fill="#fa0" font-size="11">fan</text>
+<circle cx="708.0" cy="519.0" r="5" fill="#fa0"/><text x="715.0" y="523.0" fill="#fa0" font-size="11">light</text>
+<circle cx="645.0" cy="35.99999999999998" r="5" fill="#fa0"/><text x="652.0" y="39.99999999999998" fill="#fa0" font-size="11">draft</text>
+<circle cx="645.0" cy="32.999999999999986" r="5" fill="#fa0"/><text x="652.0" y="36.999999999999986" fill="#fa0" font-size="11">outside</text>
+<circle cx="138.0" cy="348.0" r="6" fill="#4af"/>
+<rect x="600" y="30" width="90" height="24.00000000000002" fill="none" stroke="#f4f" stroke-dasharray="4"/>
+</svg>

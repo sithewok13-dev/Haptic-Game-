@@ -1,0 +1,259 @@
+import Foundation
+
+/// Physical events produced by moving through the world.
+public enum SimEvent: Equatable {
+    case footstep(surface: Surface, stairs: Bool, foot: Int, position: Vec2, soft: Bool)
+    /// Walked into a wall (once per contact).
+    case wallBump(point: Vec2)
+    /// Started brushing along a wall at an angle.
+    case wallContactBegan(point: Vec2)
+    /// Hand brushing the wall while sliding along it (paired with footsteps).
+    case wallBrush(point: Vec2)
+    /// Moved from one room into another.
+    case threshold(from: Int, to: Int)
+    /// Feet shuffling while turning in place.
+    case pivot
+    /// Heading crossed a wall-aligned direction (north/east/south/west).
+    case aligned(cardinal: Int)
+    case reachedExit
+}
+
+public struct MovementTuning: Equatable {
+    public var walkSpeed = 1.15
+    public var stairSpeed = 0.7
+    public var strideLength = 0.68
+    public var stairStride = 0.36
+    public var snapTurnRate = Heading.radians(300)
+    public var pivotSoundEvery = Heading.radians(35)
+    /// Fraction of intended motion that must be blocked to count as walking into a wall.
+    public var bumpBlockedFraction = 0.55
+    /// Standing still this long, or stepping this far away from walls, re-arms the bump.
+    public var contactReleaseIdle = 1.2
+    public var contactReleaseGap = 0.12
+    public init() {}
+}
+
+/// Player movement in the invisible world: position, facing, collisions, footsteps, thresholds.
+public final class Simulation {
+    public let world: World
+    public var tuning = MovementTuning()
+
+    public private(set) var position: Vec2
+    /// Radians, 0 = north, clockwise.
+    public private(set) var heading: Double
+    public private(set) var room: Int
+    public private(set) var isWalking = false
+    public private(set) var reachedExit = false
+    public private(set) var visitedRooms: Set<Int> = []
+    /// Rooms visited before the most recent entry into the current room.
+    public private(set) var currentRoomWasVisitedBefore = false
+    public private(set) var distanceWalked = 0.0
+
+    private var unwrappedDegrees: Double
+    private var snapRemaining: Double = 0
+    private var stride = 0.0
+    private var foot = 0
+    private var inContact = false
+    private var idleTime = 0.0
+    private var pivotAccumulator = 0.0
+    private var pending: [SimEvent] = []
+
+    public init(world: World) {
+        self.world = world
+        position = world.definition.start.position
+        heading = Heading.normalized(Heading.radians(world.definition.start.headingDegrees))
+        unwrappedDegrees = world.definition.start.headingDegrees
+        room = world.startRoom
+        visitedRooms = [room]
+    }
+
+    public func reset() {
+        position = world.definition.start.position
+        heading = Heading.normalized(Heading.radians(world.definition.start.headingDegrees))
+        unwrappedDegrees = world.definition.start.headingDegrees
+        room = world.startRoom
+        visitedRooms = [room]
+        currentRoomWasVisitedBefore = false
+        isWalking = false
+        reachedExit = false
+        snapRemaining = 0
+        stride = 0
+        inContact = false
+        idleTime = 0
+        pivotAccumulator = 0
+        distanceWalked = 0
+        pending.removeAll()
+    }
+
+    public var headingDegrees: Double { Heading.degrees(heading) }
+
+    public func setWalking(_ walking: Bool) {
+        guard walking != isWalking else { return }
+        isWalking = walking
+        if walking {
+            // First step lands quickly so starting to walk is felt at once.
+            stride = currentStride * 0.65
+        } else if stride > currentStride * 0.3 {
+            // A soft settling step confirms the stop.
+            let s = world.surface(at: position, room: room)
+            pending.append(.footstep(surface: s.surface, stairs: s.stairs, foot: foot, position: position, soft: true))
+            foot ^= 1
+            stride = 0
+        }
+    }
+
+    /// Immediate turn by an angle (positive = clockwise / to the right). Cancels any snap turn.
+    public func turn(byDegrees degrees: Double) {
+        snapRemaining = 0
+        applyTurn(degrees)
+    }
+
+    /// Turn to the next wall-aligned direction to the right (+1) or left (-1).
+    /// If already within 10 degrees of one, goes to the following one.
+    public func snapTurn(direction: Int) {
+        let c = Heading.degrees(heading)
+        let target: Double
+        if direction > 0 {
+            target = ((c + 10) / 90).rounded(.down) * 90 + 90
+        } else {
+            target = ((c - 10) / 90).rounded(.up) * 90 - 90
+        }
+        snapRemaining = target - c
+    }
+
+    /// Turn around to the wall-aligned direction nearest the opposite heading.
+    public func turnAround() {
+        let c = Heading.degrees(heading)
+        let target = ((c + 180) / 90).rounded() * 90
+        snapRemaining = target - c
+    }
+
+    public var isSnapTurning: Bool { abs(snapRemaining) > 1e-6 }
+
+    private var currentStride: Double {
+        world.surface(at: position, room: room).stairs ? tuning.stairStride : tuning.strideLength
+    }
+
+    private func applyTurn(_ degrees: Double) {
+        guard degrees != 0 else { return }
+        let before = unwrappedDegrees
+        let after = before + degrees
+        // Wall-aligned crossings (multiples of 90 degrees).
+        let eps = 1e-7
+        if degrees > 0 {
+            let a = (before / 90 + eps).rounded(.down)
+            let b = (after / 90 + eps).rounded(.down)
+            if b > a { pending.append(.aligned(cardinal: Simulation.cardinalIndex(b))) }
+        } else {
+            let a = (before / 90 - eps).rounded(.up)
+            let b = (after / 90 - eps).rounded(.up)
+            if b < a { pending.append(.aligned(cardinal: Simulation.cardinalIndex(b))) }
+        }
+        unwrappedDegrees = after
+        heading = Heading.normalized(Heading.radians(after))
+        if !isWalking {
+            pivotAccumulator += abs(degrees)
+            if pivotAccumulator >= Heading.degrees(tuning.pivotSoundEvery) {
+                pivotAccumulator = 0
+                pending.append(.pivot)
+            }
+        }
+    }
+
+    static func cardinalIndex(_ k: Double) -> Int {
+        let i = Int(k) % 4
+        return i < 0 ? i + 4 : i
+    }
+
+    /// Advances the simulation. `dt` is clamped so a stall never becomes a jump in position.
+    public func update(dt rawDt: Double) -> [SimEvent] {
+        let dt = max(0, min(rawDt, 0.05))
+        var events = pending
+        pending.removeAll()
+
+        if isSnapTurning {
+            let stepDeg = Heading.degrees(tuning.snapTurnRate) * dt
+            let delta = abs(snapRemaining) <= stepDeg ? snapRemaining : (snapRemaining > 0 ? stepDeg : -stepDeg)
+            snapRemaining -= delta
+            if abs(snapRemaining) < 1e-6 {
+                snapRemaining = 0
+                // Land exactly on the wall-aligned heading.
+                let target = unwrappedDegrees + delta
+                applyTurn(target.rounded() - unwrappedDegrees)
+            } else {
+                applyTurn(delta)
+            }
+            events += pending
+            pending.removeAll()
+        }
+
+        let underfoot = world.surface(at: position, room: room)
+        if isWalking {
+            idleTime = 0
+            let speed = underfoot.stairs ? tuning.stairSpeed : tuning.walkSpeed
+            let intended = Heading.forward(heading) * (speed * dt)
+            let result = moveCircle(from: position, by: intended, radius: world.playerRadius, walls: world.walls)
+            let moved = result.position.distance(to: position)
+            position = result.position
+            distanceWalked += moved
+
+            if let contact = result.contacts.max(by: { a, b in
+                a.normal.dot(-intended) < b.normal.dot(-intended)
+            }) {
+                if !inContact {
+                    inContact = true
+                    let blocked = 1 - moved / max(intended.length, 1e-9)
+                    if blocked >= tuning.bumpBlockedFraction {
+                        events.append(.wallBump(point: contact.point))
+                    } else {
+                        events.append(.wallContactBegan(point: contact.point))
+                    }
+                }
+            } else if inContact && world.nearestWallDistance(to: position) > world.playerRadius + tuning.contactReleaseGap {
+                inContact = false
+            }
+
+            // Footsteps only for real progress, not for pushing against a wall.
+            if moved > intended.length * 0.2 {
+                stride += moved
+                let strideLen = underfoot.stairs ? tuning.stairStride : tuning.strideLength
+                if stride >= strideLen {
+                    stride -= strideLen
+                    let s = world.surface(at: position, room: room)
+                    events.append(.footstep(surface: s.surface, stairs: s.stairs, foot: foot, position: position, soft: false))
+                    if inContact, let c = result.contacts.first {
+                        events.append(.wallBrush(point: c.point))
+                    }
+                    foot ^= 1
+                }
+            }
+        } else {
+            idleTime += dt
+            if inContact && idleTime >= tuning.contactReleaseIdle { inContact = false }
+        }
+
+        if let newRoom = world.room(at: position, current: room), newRoom != room {
+            let previous = room
+            room = newRoom
+            currentRoomWasVisitedBefore = visitedRooms.contains(newRoom)
+            visitedRooms.insert(newRoom)
+            events.append(.threshold(from: previous, to: newRoom))
+        }
+
+        if !reachedExit && room == world.exitRoom && world.definition.exit.rect.contains(position) {
+            reachedExit = true
+            isWalking = false
+            events.append(.reachedExit)
+        }
+        return events
+    }
+
+    /// Debug/test helper: place the player directly.
+    public func teleport(to p: Vec2, headingDegrees: Double) {
+        position = p
+        heading = Heading.normalized(Heading.radians(headingDegrees))
+        unwrappedDegrees = headingDegrees
+        if let r = world.room(at: p) { room = r }
+        visitedRooms.insert(room)
+    }
+}

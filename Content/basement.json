@@ -1,0 +1,76 @@
+{
+  "name": "The Basement",
+  "version": 1,
+  "playerRadius": 0.25,
+  "start": { "position": [3.6, 1.4], "headingDegrees": 0 },
+  "exit": { "room": "stairwell", "rect": { "x0": 19, "y0": 11.2, "x1": 22, "y1": 12 } },
+  "rooms": [
+    {
+      "id": "pumpRoom",
+      "description": "Wet concrete underfoot. A small square room that smells of rust.",
+      "rect": { "x0": 0, "y0": 0, "x1": 6, "y1": 5 },
+      "surface": "wetConcrete",
+      "acoustics": "mediumRoom"
+    },
+    {
+      "id": "corridor",
+      "description": "Old wooden boards. A narrow passage.",
+      "rect": { "x0": 6, "y0": 2, "x1": 18, "y1": 3.6 },
+      "surface": "woodBoards",
+      "acoustics": "corridor"
+    },
+    {
+      "id": "ventRoom",
+      "description": "Metal grating underfoot. A cramped side room.",
+      "rect": { "x0": 8, "y0": 3.6, "x1": 13, "y1": 8.6 },
+      "surface": "metalGrate",
+      "acoustics": "smallRoom"
+    },
+    {
+      "id": "junction",
+      "description": "Gritty concrete. A wider space where passages meet.",
+      "rect": { "x0": 18, "y0": 0, "x1": 23, "y1": 6 },
+      "surface": "grit",
+      "acoustics": "largeRoom"
+    },
+    {
+      "id": "storage",
+      "description": "Dry, dusty concrete. A low storeroom.",
+      "rect": { "x0": 17, "y0": -5, "x1": 24, "y1": 0 },
+      "surface": "dryConcrete",
+      "acoustics": "smallRoom"
+    },
+    {
+      "id": "stairwell",
+      "description": "A tall stone stairwell. Cold air moves here.",
+      "rect": { "x0": 19, "y0": 6, "x1": 22, "y1": 12 },
+      "surface": "dryConcrete",
+      "acoustics": "stairwell",
+      "zones": [
+        { "rect": { "x0": 19, "y0": 7.5, "x1": 22, "y1": 11.2 }, "surface": "stoneStairs", "stairs": true },
+        { "rect": { "x0": 19, "y0": 11.2, "x1": 22, "y1": 12 }, "surface": "outside" }
+      ]
+    }
+  ],
+  "doorways": [
+    { "id": "pump-corridor", "rooms": ["pumpRoom", "corridor"], "a": [6, 2.2], "b": [6, 3.4] },
+    { "id": "corridor-vent", "rooms": ["corridor", "ventRoom"], "a": [9.5, 3.6], "b": [10.7, 3.6] },
+    { "id": "corridor-junction", "rooms": ["corridor", "junction"], "a": [18, 2.0], "b": [18, 3.6] },
+    { "id": "junction-stairs", "rooms": ["junction", "stairwell"], "a": [19.8, 6], "b": [21.2, 6] },
+    { "id": "junction-storage", "rooms": ["junction", "storage"], "a": [19.8, 0], "b": [21.2, 0] }
+  ],
+  "sources": [
+    { "id": "drip", "sound": "drip", "position": [1.0, 4.3], "level": 0.9, "referenceDistance": 1.2,
+      "reverbBlend": 0.5, "landmark": "Dripping water" },
+    { "id": "pipes", "sound": "pipeGroan", "position": [12.0, 3.3], "level": 0.5, "referenceDistance": 2.0,
+      "reverbBlend": 0.6 },
+    { "id": "fan", "sound": "ventHum", "position": [12.3, 8.1], "level": 0.55, "referenceDistance": 1.5,
+      "reverbBlend": 0.35, "landmark": "A humming fan" },
+    { "id": "light", "sound": "buzz", "position": [22.6, -4.3], "level": 0.4, "referenceDistance": 1.2,
+      "reverbBlend": 0.4, "landmark": "A buzzing light" },
+    { "id": "draft", "sound": "wind", "position": [20.5, 11.8], "level": 0.7, "referenceDistance": 2.5,
+      "reverbBlend": 0.5, "landmark": "A cold draft from above" },
+    { "id": "outside", "sound": "outdoor", "position": [20.5, 11.9], "level": 0.35, "referenceDistance": 2.5,
+      "reverbBlend": 0.2 }
+  ]
+}

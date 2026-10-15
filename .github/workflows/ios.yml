@@ -1,0 +1,81 @@
+name: Build and test
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core logic tests
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate world geometry (independent Python check)
+        run: python3 tools/validate_world.py Content/basement.json
+      - name: Swift version
+        run: swift --version
+      - name: swift test
+        run: swift test 2>&1 | tail -n 200
+
+  ios-build:
+    name: iOS app build, simulator self-test, unsigned IPA
+    runs-on: macos-15
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select newest Xcode
+        run: |
+          ls -d /Applications/Xcode*.app
+          XCODE=$(ls -d /Applications/Xcode_*.app | sort -V | tail -n 1)
+          sudo xcode-select -s "$XCODE"
+          xcodebuild -version
+          xcrun simctl list runtimes
+      - name: Build for simulator
+        run: |
+          set -o pipefail
+          xcodebuild -project CellarEscape.xcodeproj -scheme CellarEscape -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/sim CODE_SIGNING_ALLOWED=NO build | tail -n 80
+      - name: Simulator self-test (autopilot plays to the exit through the real app)
+        run: |
+          set -x
+          UDID=$(xcrun simctl list devices available -j | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)['devices']
+          c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]
+          print(c[-1]['udid'])")
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+          APP=$(find build/sim -name 'CellarEscape.app' -type d | head -n 1)
+          xcrun simctl install "$UDID" "$APP"
+          timeout 240 xcrun simctl launch --console-pty --terminate-running-process "$UDID" com.cellarescape.game -selftest 2>&1 | tee selftest.log || true
+          xcrun simctl io "$UDID" screenshot selftest.png || true
+          grep -q "SELFTEST PASS" selftest.log
+      - name: Build unsigned device app and package IPA
+        run: |
+          set -o pipefail
+          xcodebuild -project CellarEscape.xcodeproj -scheme CellarEscape -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build/device \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build | tail -n 40
+          APP=$(find build/device -name 'CellarEscape.app' -type d | head -n 1)
+          mkdir -p ipa/Payload
+          cp -R "$APP" ipa/Payload/
+          (cd ipa && zip -qry ../CellarEscape-unsigned.ipa Payload)
+          ls -la CellarEscape-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CellarEscape-unsigned-ipa
+          path: CellarEscape-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: simulator-selftest
+          path: |
+            selftest.log
+            selftest.png
