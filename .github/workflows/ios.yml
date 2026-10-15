@@ -67,7 +67,7 @@ jobs:
           xcrun simctl bootstatus "$UDID" -b
           APP=$(find build/sim -name 'CellarEscape.app' -type d | head -n 1)
           xcrun simctl install "$UDID" "$APP"
-          timeout 240 xcrun simctl launch --console-pty --terminate-running-process "$UDID" com.cellarescape.game -selftest 2>&1 | tee selftest.log || true
+          perl -e 'alarm shift; exec @ARGV' 240 xcrun simctl launch --console-pty --terminate-running-process "$UDID" com.cellarescape.game -selftest 2>&1 | tee selftest.log || true
           xcrun simctl io "$UDID" screenshot selftest.png || true
           grep -q "SELFTEST PASS" selftest.log
       - name: Build unsigned device app and package IPA
