@@ -10,6 +10,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  core-tests-linux:
+    name: Core logic tests (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate world geometry (independent Python check)
+        run: python3 tools/validate_world.py Content/basement.json
+      - name: Swift version
+        run: swift --version
+      - name: swift test
+        run: swift test 2>&1 | tail -n 300; exit ${PIPESTATUS[0]}
+
   core-tests:
     name: Core logic tests
     runs-on: macos-15
@@ -21,7 +34,7 @@ jobs:
       - name: Swift version
         run: swift --version
       - name: swift test
-        run: swift test 2>&1 | tail -n 200
+        run: swift test 2>&1 | tail -n 300; exit ${PIPESTATUS[0]}
 
   ios-build:
     name: iOS app build, simulator self-test, unsigned IPA
