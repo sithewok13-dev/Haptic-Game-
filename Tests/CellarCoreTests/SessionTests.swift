@@ -15,26 +15,26 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(session.phase, .practice(.walk))
 
         _ = session.handle(.walkBegan)
-        var cues = run(session, seconds: 1.5, clock: &clock)
+        var cues = simulate(session, seconds: 1.5, clock: &clock)
         XCTAssertEqual(session.phase, .practice(.stop))
         XCTAssertTrue(cues.spoken.contains(Script.practiceStop))
 
         _ = session.handle(.walkEnded)
-        cues = run(session, seconds: 0.2, clock: &clock)
+        cues = simulate(session, seconds: 0.2, clock: &clock)
         XCTAssertEqual(session.phase, .practice(.turnToSound))
 
         // Turn left until the drip is ahead (it starts about 42 degrees left of north).
         let drip = session.practiceSource!.position
         for _ in 0..<200 where session.phase == .practice(.turnToSound) {
             _ = session.handle(.turn(points: -5))
-            cues = run(session, seconds: 1.0 / 60, clock: &clock)
+            cues = simulate(session, seconds: 1.0 / 60, clock: &clock)
         }
         XCTAssertEqual(session.phase, .practice(.approach))
         let lp = ListenerPoint(world: drip, listener: session.sim.position, heading: session.sim.heading)
         XCTAssertLessThan(abs(Heading.degrees(lp.bearing)), 20)
 
         _ = session.handle(.walkBegan)
-        cues = run(session, seconds: 6, clock: &clock)
+        cues = simulate(session, seconds: 6, clock: &clock)
         XCTAssertEqual(session.phase, .exploring)
         XCTAssertTrue(cues.spoken.contains(Script.practiceDone))
         XCTAssertTrue(session.settings.practiceDone)
@@ -45,13 +45,13 @@ final class SessionTests: XCTestCase {
         var clock = 0.0
         _ = session.begin()
         _ = session.handle(.walkBegan)
-        run(session, seconds: 0.5, clock: &clock)
+        simulate(session, seconds: 0.5, clock: &clock)
         let cues = session.handle(.twoFingerHold)
         XCTAssertEqual(session.phase, .paused)
         XCTAssertTrue(cues.contains(.worldAudio(active: false)))
         XCTAssertFalse(session.sim.isWalking, "Pausing stops movement")
         let p = session.sim.position
-        run(session, seconds: 5, clock: &clock)
+        simulate(session, seconds: 5, clock: &clock)
         _ = session.update(dt: 120, now: clock + 120) // app was suspended for two minutes
         XCTAssertEqual(session.sim.position, p)
         _ = session.handle(.twoFingerHold)
@@ -102,7 +102,7 @@ final class SessionTests: XCTestCase {
         var cues = session.handle(.doubleTap)
         XCTAssertEqual(session.phase, .paused)
         XCTAssertTrue(cues.spoken.first!.contains("again"))
-        run(session, seconds: 1, clock: &clock)
+        simulate(session, seconds: 1, clock: &clock)
         cues = session.handle(.doubleTap)
         XCTAssertTrue(cues.contains(.restarted))
         XCTAssertEqual(session.phase, .exploring)
@@ -158,7 +158,7 @@ final class SessionTests: XCTestCase {
         var all: [Cue] = []
         var seconds = 0.0
         while session.phase != .completed && seconds < 240 {
-            all += run(session, seconds: 1.0 / 60, clock: &clock) { dt in pilot.step(dt: dt) }
+            all += simulate(session, seconds: 1.0 / 60, clock: &clock) { dt in pilot.step(dt: dt) }
             seconds += 1.0 / 60
         }
         XCTAssertEqual(session.phase, .completed, "Stuck at \(session.sim.position) after \(seconds)s")
@@ -167,12 +167,41 @@ final class SessionTests: XCTestCase {
         let thresholds = all.simEvents.filter { if case .threshold = $0 { return true } else { return false } }
         XCTAssertGreaterThanOrEqual(thresholds.count, 7)
         // Completion message arrives after the sound, then double-tap replays.
-        all = run(session, seconds: 5, clock: &clock)
+        all = simulate(session, seconds: 5, clock: &clock)
         XCTAssertTrue(all.spoken.contains(Script.completion))
         let replay = session.handle(.doubleTap)
         XCTAssertTrue(replay.contains(.restarted))
         XCTAssertEqual(session.phase, .exploring)
         XCTAssertFalse(session.sim.reachedExit)
+    }
+
+    /// Raw touches all the way to movement: hold walks, lift stops, drag-only turns in place.
+    func testRawTouchesDriveMovement() throws {
+        let session = try explored()
+        _ = session.begin()
+        var now = 10.0
+        func frames(_ n: Int) { for _ in 0..<n { now += 1.0 / 60; _ = session.update(dt: 1.0 / 60, now: now) } }
+        let start = session.sim.position
+        _ = session.handleTouches([TouchSample(id: 1, phase: .began, x: 200, y: 400)], time: now)
+        frames(60)
+        XCTAssertTrue(session.sim.isWalking)
+        XCTAssertGreaterThan(session.sim.position.y - start.y, 0.8, "Walked north about 0.95 m")
+        _ = session.handleTouches([TouchSample(id: 1, phase: .ended, x: 200, y: 400)], time: now)
+        let stopped = session.sim.position
+        frames(30)
+        XCTAssertEqual(session.sim.position, stopped, "Lifting stops at once")
+
+        // Drag sideways from a fresh touch: turns about 90 degrees right, no walking.
+        _ = session.handleTouches([TouchSample(id: 2, phase: .began, x: 100, y: 400)], time: now)
+        frames(3)
+        for i in 1...15 {
+            _ = session.handleTouches([TouchSample(id: 2, phase: .moved, x: 100 + Double(i) * 15, y: 400)], time: now)
+            frames(1)
+        }
+        frames(60)
+        _ = session.handleTouches([TouchSample(id: 2, phase: .ended, x: 325, y: 400)], time: now)
+        XCTAssertEqual(session.sim.headingDegrees, 90, accuracy: 0.5)
+        XCTAssertEqual(session.sim.position, stopped, "Turning on the spot does not move the player")
     }
 
     func testSoundsRender() {

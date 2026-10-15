@@ -194,7 +194,6 @@ public enum SoundSynth {
 
     /// Occasional groan of old pipes and a distant knock; mostly silence.
     static func pipeGroan() -> [Float] {
-        var rng = RNG(23)
         return loop(seconds: 15, fade: 0.2, peak: 0.8) { n in
             var x = [Double](repeating: 0, count: n)
             // Groan: buzzy low tone with wandering pitch, shaped by resonances.

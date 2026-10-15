@@ -16,7 +16,7 @@ enum Fixtures {
 
 /// Runs a session for `seconds` of simulated time at 60 fps, feeding optional gestures each frame.
 @discardableResult
-func run(_ session: GameSession, seconds: Double, clock: inout Double,
+func simulate(_ session: GameSession, seconds: Double, clock: inout Double,
          gestures: ((Double) -> [Gesture])? = nil) -> [Cue] {
     let dt = 1.0 / 60
     var cues: [Cue] = []

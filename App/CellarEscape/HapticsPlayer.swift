@@ -1,11 +1,13 @@
 import CoreHaptics
 import UIKit
 
-/// The whole haptic vocabulary: four brief, distinct patterns.
+/// The whole haptic vocabulary: a few brief, distinct patterns.
 /// Phone vibration cannot say left or right, so direction is left to audio.
 enum HapticKind {
     /// Walked into a wall: one firm knock.
     case bump
+    /// Glanced a wall at an angle and started sliding along it: the same knock, lighter.
+    case brush
     /// Passed through an opening into a new space: two soft, dull pulses.
     case threshold
     /// Facing lines up with the walls: a tiny crisp tick.
@@ -61,6 +63,9 @@ final class HapticsPlayer {
             patterns[.bump] = try CHHapticPattern(events: [
                 event(0, intensity: 0.95, sharpness: 0.45),
                 event(0.005, intensity: 0.35, sharpness: 0.15, duration: 0.06),
+            ], parameters: [])
+            patterns[.brush] = try CHHapticPattern(events: [
+                event(0, intensity: 0.4, sharpness: 0.45),
             ], parameters: [])
             patterns[.threshold] = try CHHapticPattern(events: [
                 event(0, intensity: 0.45, sharpness: 0.1),
@@ -118,7 +123,7 @@ final class HapticsPlayer {
         // Fallback for devices without Core Haptics support.
         switch kind {
         case .bump, .completion: impact.impactOccurred(intensity: CGFloat(intensityScale))
-        case .threshold, .aligned: lightImpact.impactOccurred(intensity: CGFloat(intensityScale * 0.6))
+        case .brush, .threshold, .aligned: lightImpact.impactOccurred(intensity: CGFloat(intensityScale * 0.6))
         }
         return supportsHaptics
     }

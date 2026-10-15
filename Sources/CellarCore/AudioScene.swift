@@ -19,7 +19,7 @@ public final class AudioScene {
     /// Directions of the wall-sense probes relative to facing (degrees).
     public static let probeAngles: [Double] = [-90, 0, 90]
     public static let probeRange = 1.9
-    public var probeLevel = 0.22
+    public var probeLevel = 0.14
 
     private struct Smoothed {
         var position: Vec2

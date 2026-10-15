@@ -25,8 +25,9 @@ public struct MovementTuning: Equatable {
     public var stairStride = 0.36
     public var snapTurnRate = Heading.radians(300)
     public var pivotSoundEvery = Heading.radians(35)
-    /// Fraction of intended motion that must be blocked to count as walking into a wall.
-    public var bumpBlockedFraction = 0.55
+    /// Approaching a wall more squarely than this (cosine of the angle from its normal,
+    /// 0.5 = within 60 degrees) is a bump; shallower contact is a glancing brush.
+    public var bumpApproachCosine = 0.5
     /// Standing still this long, or stepping this far away from walls, re-arms the bump.
     public var contactReleaseIdle = 1.2
     public var contactReleaseGap = 0.12
@@ -191,7 +192,8 @@ public final class Simulation {
         if isWalking {
             idleTime = 0
             let speed = underfoot.stairs ? tuning.stairSpeed : tuning.walkSpeed
-            let intended = Heading.forward(heading) * (speed * dt)
+            let stepLength: Double = speed * dt
+            let intended: Vec2 = Heading.forward(heading) * stepLength
             let result = moveCircle(from: position, by: intended, radius: world.playerRadius, walls: world.walls)
             let moved = result.position.distance(to: position)
             position = result.position
@@ -202,8 +204,8 @@ public final class Simulation {
             }) {
                 if !inContact {
                     inContact = true
-                    let blocked = 1 - moved / max(intended.length, 1e-9)
-                    if blocked >= tuning.bumpBlockedFraction {
+                    let squareness = contact.normal.dot(-intended.normalized)
+                    if squareness >= tuning.bumpApproachCosine {
                         events.append(.wallBump(point: contact.point))
                     } else {
                         events.append(.wallContactBegan(point: contact.point))

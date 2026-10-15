@@ -7,9 +7,13 @@ import PackageDescription
 let package = Package(
     name: "CellarCore",
     platforms: [.iOS(.v16), .macOS(.v13)],
-    products: [.library(name: "CellarCore", targets: ["CellarCore"])],
+    products: [
+        .library(name: "CellarCore", targets: ["CellarCore"]),
+        .executable(name: "CellarPreview", targets: ["CellarPreview"]),
+    ],
     targets: [
         .target(name: "CellarCore", path: "Sources/CellarCore"),
+        .executableTarget(name: "CellarPreview", dependencies: ["CellarCore"], path: "Sources/CellarPreview"),
         .testTarget(name: "CellarCoreTests", dependencies: ["CellarCore"], path: "Tests/CellarCoreTests"),
     ]
 )
