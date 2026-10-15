@@ -13,15 +13,14 @@ An audio-and-haptics exploration game for iPhone with no gameplay graphics. You 
 |---|---|---|
 | World, collisions, footsteps, thresholds, turning, sound-through-openings, gestures, session/pause/menu/practice, procedural sounds | ✅ | **47 automated tests pass** (`swift test`, Swift 5.10 on Linux). They include a 60,000-frame random walk that never passes a wall, an autopilot that plays to the exit via both wrong turns, continuity of sound across every threshold, and pause/resume with no position jump. |
 | World geometry | ✅ | An independent Python check (`tools/validate_world.py`) confirms every room and the exit are reachable on foot. |
-| iOS app layer (spatial audio, haptics, speech, interruptions, dev map) | ✅ written | ⚠️ **Not yet compiled.** No macOS or Xcode was available (see "Blocker"). Checked by careful review against the documented APIs only. |
-| Simulator self-test, unsigned IPA | ✅ workflow written | ⚠️ Not yet run (same blocker). |
-| Feel on a real iPhone: haptics, front/back clarity, comfort | — | Needs a person: [docs/PLAYTEST.md](docs/PLAYTEST.md) |
+| iOS app layer (spatial audio, haptics, speech, interruptions, dev map) | ✅ | Compiles with Xcode on GitHub's macOS runners (Debug for the simulator, Release for the device). |
+| Real app end to end | ✅ | Simulator self-test: the app starts its audio engine with all 44 sounds, the autopilot walks it through all six rooms and reaches the exit in about 39 s, and it prints `SELFTEST PASS`. |
+| Unsigned IPA | ✅ | Built by every CI run; download `CellarEscape-unsigned-ipa` from the run's artifacts. |
+| Feel on a real iPhone: haptics, front/back clarity, comfort, interruptions | — | Needs a person: [docs/PLAYTEST.md](docs/PLAYTEST.md). The simulator has no haptics and can't judge headphone audio. |
 
-### Blocker
+### Installing on an iPhone
 
-iOS apps can only be compiled with Apple's Xcode on macOS. This repo's GitHub Actions workflow (`.github/workflows/ios.yml`) does exactly that: core tests, a simulator self-test where the autopilot plays the real app to the exit, and an unsigned IPA. But **every Actions job in this repository, including a plain Linux job, is refused by GitHub within 2 seconds, before any machine starts.** That pattern usually means Actions is disabled for the repo, or the account has a billing problem or a spending limit, or has used up its minutes. To fix it: on GitHub, open **Settings → Actions → General** for the repo and allow actions, then check **Billing → Spending limits / Actions usage** for the account. Then re-run the "Build and test" workflow.
-
-Installing on an iPhone also needs **Apple code signing**: an Apple ID with a free or paid ($99/year) developer account. An unsigned IPA cannot be installed directly.
+The IPA is **unsigned**. iOS will only install apps signed with an Apple developer identity, which needs an Apple ID (free or paid $99/year). The options are below.
 
 ## Build and install
 
@@ -30,7 +29,7 @@ Installing on an iPhone also needs **Apple code signing**: an Apple ID with a fr
 2. Select the CellarEscape target → Signing & Capabilities → choose your Team (a free Apple ID works for your own phone). If the bundle id `com.cellarescape.game` is taken, change it.
 3. Plug in the iPhone, select it, press Run.
 
-**Option B: GitHub Actions (no Mac), once the blocker is fixed.** Push, or run the "Build and test" workflow. Download `CellarEscape-unsigned-ipa` from the run's artifacts. Then sign and install it with a sideloading tool (for example Sideloadly or AltStore, which need a computer once), or extend the workflow with your signing certificate.
+**Option B: GitHub Actions (no Mac).** Push, or run the "Build and test" workflow. Download `CellarEscape-unsigned-ipa` from the run's artifacts. Then sign and install it with a sideloading tool (for example Sideloadly or AltStore, which need a computer once), or extend the workflow with your signing certificate.
 
 **Option C: TestFlight (best for directing from an iPhone).** This needs a paid Apple Developer account and an App Store Connect API key stored as GitHub secrets. A signing and upload step can then be added to the workflow. Uploads need Xcode 26 / the iOS 26 SDK. Not set up yet.
 
