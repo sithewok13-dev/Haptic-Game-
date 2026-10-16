@@ -22,8 +22,9 @@ These checks need a real iPhone and a person. Wear headphones and keep your eyes
 - [ ] The cane tap: can you tell a close wall from a far one, and hear when there's no wall (an opening)?
 - [ ] **Front/back:** with the drip behind you, do you know it's behind? (yes / no / unsure)
 - [ ] Walking toward the drip makes it clearly louder and closer.
-- [ ] Walking into a wall gives one firm knock (sound + vibration), not a buzz. Holding against the wall adds nothing more.
-- [ ] Sliding along a wall at an angle gives a light tap and hand-scrape sounds.
+- [ ] Walking into a wall bounces you back with a strong knock you can clearly feel. Keep holding: does it keep bouncing until you turn away, and does that feel right?
+- [ ] Walking diagonally into a wall slides you along it, with a light tap each step.
+- [ ] Walking roughly toward a doorway lets you through without catching on the frame.
 
 ## Exploring
 

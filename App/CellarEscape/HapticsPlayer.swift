@@ -4,9 +4,9 @@ import UIKit
 /// The whole haptic vocabulary: a few brief, distinct patterns.
 /// Phone vibration cannot say left or right, so direction is left to audio.
 enum HapticKind {
-    /// Walked into a wall: one firm knock.
+    /// Walked into a wall and bounced back: a heavy knock (repeats while you keep walking into it).
     case bump
-    /// Glanced a wall at an angle and started sliding along it: the same knock, lighter.
+    /// Touching a wall while sliding along it: a light tap, once per step.
     case brush
     /// Passed through an opening into a new space: two soft, dull pulses.
     case threshold
@@ -19,13 +19,13 @@ enum HapticKind {
 final class HapticsPlayer {
     var enabled = true
     /// Overall comfort scale for intensities.
-    var intensityScale: Float = 0.85
+    var intensityScale: Float = 1.0
 
     let supportsHaptics = CHHapticEngine.capabilitiesForHardware().supportsHaptics
     private var engine: CHHapticEngine?
     private var engineRunning = false
     private var patterns: [HapticKind: CHHapticPattern] = [:]
-    private let impact = UIImpactFeedbackGenerator(style: .medium)
+    private let impact = UIImpactFeedbackGenerator(style: .heavy)
     private let lightImpact = UIImpactFeedbackGenerator(style: .light)
 
     init() {
@@ -60,12 +60,14 @@ final class HapticsPlayer {
 
     private func buildPatterns() {
         do {
+            // A solid knock you can't miss: sharp hit, a short heavy body, and a small rebound.
             patterns[.bump] = try CHHapticPattern(events: [
-                event(0, intensity: 0.95, sharpness: 0.45),
-                event(0.005, intensity: 0.35, sharpness: 0.15, duration: 0.06),
+                event(0, intensity: 1.0, sharpness: 0.55),
+                event(0.004, intensity: 0.8, sharpness: 0.2, duration: 0.12),
+                event(0.09, intensity: 0.5, sharpness: 0.4),
             ], parameters: [])
             patterns[.brush] = try CHHapticPattern(events: [
-                event(0, intensity: 0.4, sharpness: 0.45),
+                event(0, intensity: 0.55, sharpness: 0.5),
             ], parameters: [])
             patterns[.threshold] = try CHHapticPattern(events: [
                 event(0, intensity: 0.45, sharpness: 0.1),

@@ -12,35 +12,63 @@ final class SimulationTests: XCTestCase {
         return events
     }
 
-    func testWalkingIntoWallStopsAndBumpsOnce() throws {
+    func testWalkingIntoWallBouncesRepeatedlyButNeverPassesThrough() throws {
         let sim = Simulation(world: try Fixtures.basement())
         // Start (3.6, 1.4) facing north; the north wall is at y = 5.
         sim.setWalking(true)
-        let events = step(sim, seconds: 8)
-        XCTAssertEqual(sim.position.y, 5 - sim.world.playerRadius, accuracy: 0.01)
+        var bumps = 0
+        var maxY = 0.0
+        for _ in 0..<(60 * 8) {
+            for e in sim.update(dt: 1.0 / 60) { if case .wallBump = e { bumps += 1 } }
+            maxY = max(maxY, sim.position.y)
+        }
+        XCTAssertLessThanOrEqual(maxY, 5 - sim.world.playerRadius + 1e-6)
         XCTAssertEqual(sim.position.x, 3.6, accuracy: 0.01)
-        let bumps = events.filter { if case .wallBump = $0 { return true } else { return false } }
-        XCTAssertEqual(bumps.count, 1, "Holding against a wall must not repeat the impact")
-        // No footsteps while pressing against the wall: count steps in the last 4 seconds.
-        let later = step(sim, seconds: 4)
-        XCTAssertFalse(later.contains { if case .footstep = $0 { return true } else { return false } })
+        // First hit after ~3 s, then roughly two bounces a second while still holding.
+        XCTAssertTrue((7...14).contains(bumps), "got \(bumps) bumps")
+        XCTAssertGreaterThan(sim.position.y, 4.4, "Bounces are short; you stay at the wall")
     }
 
-    func testBumpRearmsAfterBackingOff() throws {
+    func testTurningAwayFromAWallFreesYou() throws {
         let sim = Simulation(world: try Fixtures.basement())
         sim.setWalking(true)
-        _ = step(sim, seconds: 5)
+        _ = step(sim, seconds: 4)
         sim.setWalking(false)
         sim.turnAround()
         _ = step(sim, seconds: 1)
         sim.setWalking(true)
-        _ = step(sim, seconds: 0.6)
-        sim.setWalking(false)
-        sim.turnAround()
-        _ = step(sim, seconds: 1)
+        let y = sim.position.y
+        let events = step(sim, seconds: 1)
+        XCTAssertLessThan(sim.position.y, y - 0.9)
+        XCTAssertFalse(events.contains { if case .wallBump = $0 { return true } else { return false } })
+    }
+
+    func testDiagonalIntoCornerStillBounces() throws {
+        let sim = Simulation(world: try Fixtures.basement())
+        sim.teleport(to: Vec2(1.0, 1.0), headingDegrees: 225) // into the south-west corner
+        sim.setWalking(true)
+        let events = step(sim, seconds: 4)
+        XCTAssertTrue(events.contains { if case .wallBump = $0 { return true } else { return false } },
+                      "Wedged in a corner must not be silent")
+    }
+
+    func testDoorwayGuidanceLetsImpreciseAimThrough() throws {
+        let sim = Simulation(world: try Fixtures.basement())
+        // Walking east but aimed at the wall just above the opening (opening is y 2.2...3.4).
+        sim.teleport(to: Vec2(4.8, 3.55), headingDegrees: 90)
+        sim.setWalking(true)
+        let events = step(sim, seconds: 3)
+        XCTAssertEqual(sim.world.rooms[sim.room].id, "corridor")
+        XCTAssertFalse(events.contains { if case .wallBump = $0 { return true } else { return false } })
+    }
+
+    func testDiagonalWalkSlidesAlongWall() throws {
+        let sim = Simulation(world: try Fixtures.basement())
+        sim.teleport(to: Vec2(1.0, 4.0), headingDegrees: 45) // north-east into the north wall
         sim.setWalking(true)
         let events = step(sim, seconds: 2)
-        XCTAssertTrue(events.contains { if case .wallBump = $0 { return true } else { return false } })
+        XCTAssertGreaterThan(sim.position.x, 2.5, "Slid east along the wall")
+        XCTAssertFalse(events.contains { if case .wallBump = $0 { return true } else { return false } })
     }
 
     func testSlidingAlongWallIsContactNotBump() throws {

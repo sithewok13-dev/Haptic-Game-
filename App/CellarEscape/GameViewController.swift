@@ -208,13 +208,14 @@ final class GameViewController: UIViewController {
                         height: -1.2, gain: Float(GameViewController.stepGain(surface) * (soft ? 0.45 : 1)),
                         reverbBlend: 0.35)
         case .wallBump(let point):
-            audio?.play("bump", at: local(point), height: 0.1, gain: 0.85, reverbBlend: 0.3)
+            audio?.play("bump", at: local(point), height: 0.1, gain: 1.0, reverbBlend: 0.3)
             haptics.play(.bump)
         case .wallContactBegan(let point):
             audio?.play("brush", at: local(point), height: 0.1, gain: 0.4, reverbBlend: 0.2)
             haptics.play(.brush)
         case .wallBrush(let point):
-            audio?.play("brush", at: local(point), height: 0.1, gain: 0.22, reverbBlend: 0.2)
+            audio?.play("brush", at: local(point), height: 0.1, gain: 0.3, reverbBlend: 0.2)
+            haptics.play(.brush)
         case .threshold:
             audio?.play("threshold", at: ListenerPoint(right: 0, forward: 0.4), gain: 0.3, reverbBlend: 0.1)
             haptics.play(.threshold)

@@ -25,10 +25,21 @@ public struct MovementTuning: Equatable {
     public var stairStride = 0.36
     public var snapTurnRate = Heading.radians(300)
     public var pivotSoundEvery = Heading.radians(35)
-    /// Approaching a wall more squarely than this (cosine of the angle from its normal,
-    /// 0.5 = within 60 degrees) is a bump; shallower contact is a glancing brush.
-    public var bumpApproachCosine = 0.5
-    /// Standing still this long, or stepping this far away from walls, re-arms the bump.
+    /// Walking into a wall more squarely than this (cosine of the angle from its normal;
+    /// 0.8 = within about 37 degrees) bounces you back. Shallower contact slides along the wall,
+    /// so walking diagonally (45 degrees) follows walls instead of stopping.
+    public var bumpApproachCosine = 0.8
+    /// Bounce: initial speed (m/s) away from the wall, decay time and how long walking pauses.
+    /// Holding to walk then bumps again about twice a second until you turn away.
+    public var bounceSpeed = 2.2
+    public var bounceDecay = 0.07
+    public var bounceDuration = 0.3
+    /// Doorway guidance: walking roughly toward an opening (within `doorAssistAngle`, inside
+    /// `doorAssistRange` metres) slides you sideways into it at up to `doorAssistSpeed` m/s.
+    public var doorAssistRange = 1.4
+    public var doorAssistAngle = Heading.radians(55)
+    public var doorAssistSpeed = 0.7
+    /// Stepping this far away from walls ends a sliding contact.
     public var contactReleaseIdle = 1.2
     public var contactReleaseGap = 0.12
     public init() {}
@@ -55,6 +66,8 @@ public final class Simulation {
     private var stride = 0.0
     private var foot = 0
     private var inContact = false
+    private var bounceVelocity = Vec2.zero
+    private var bounceTime = 0.0
     private var idleTime = 0.0
     private var pivotAccumulator = 0.0
     private var pending: [SimEvent] = []
@@ -80,6 +93,8 @@ public final class Simulation {
         snapRemaining = 0
         stride = 0
         inContact = false
+        bounceVelocity = .zero
+        bounceTime = 0
         idleTime = 0
         pivotAccumulator = 0
         distanceWalked = 0
@@ -196,36 +211,50 @@ public final class Simulation {
         }
 
         let underfoot = world.surface(at: position, room: room)
-        if isWalking {
+        if bounceTime > 0 {
+            // Knocked back from a wall: glide away, then walking resumes if still held.
+            bounceTime -= dt
+            let push = bounceVelocity * dt
+            bounceVelocity = bounceVelocity * exp(-dt / tuning.bounceDecay)
+            position = moveCircle(from: position, by: push, radius: world.playerRadius, walls: world.walls).position
+        } else if isWalking {
             idleTime = 0
             let speed = underfoot.stairs ? tuning.stairSpeed : tuning.walkSpeed
             let stepLength: Double = speed * dt
-            let intended: Vec2 = Heading.forward(heading) * stepLength
-            let result = moveCircle(from: position, by: intended, radius: world.playerRadius, walls: world.walls)
+            let forward = Heading.forward(heading)
+            let intended: Vec2 = forward * stepLength
+            let assist = doorwayAssist(direction: forward, dt: dt)
+            let result = moveCircle(from: position, by: intended + assist, radius: world.playerRadius, walls: world.walls)
             let moved = result.position.distance(to: position)
             position = result.position
             distanceWalked += moved
+            let strideLen = underfoot.stairs ? tuning.stairStride : tuning.strideLength
 
             if let contact = result.contacts.max(by: { a, b in
                 a.normal.dot(-intended) < b.normal.dot(-intended)
             }) {
-                if !inContact {
+                let squareness = contact.normal.dot(-forward)
+                let noProgress = moved < intended.length * 0.25
+                if squareness >= tuning.bumpApproachCosine || noProgress {
+                    // Head-on (or wedged in a corner): bounce back.
+                    events.append(.wallBump(point: contact.point))
+                    var away = contact.normal
+                    if noProgress && squareness < tuning.bumpApproachCosine { away = -forward }
+                    bounceVelocity = away * tuning.bounceSpeed
+                    bounceTime = tuning.bounceDuration
+                    inContact = false
+                    stride = strideLen * 0.5
+                } else if !inContact {
                     inContact = true
-                    let squareness = contact.normal.dot(-intended.normalized)
-                    if squareness >= tuning.bumpApproachCosine {
-                        events.append(.wallBump(point: contact.point))
-                    } else {
-                        events.append(.wallContactBegan(point: contact.point))
-                    }
+                    events.append(.wallContactBegan(point: contact.point))
                 }
             } else if inContact && world.nearestWallDistance(to: position) > world.playerRadius + tuning.contactReleaseGap {
                 inContact = false
             }
 
             // Footsteps only for real progress, not for pushing against a wall.
-            if moved > intended.length * 0.2 {
+            if bounceTime <= 0 && moved > intended.length * 0.2 {
                 stride += moved
-                let strideLen = underfoot.stairs ? tuning.stairStride : tuning.strideLength
                 if stride >= strideLen {
                     stride -= strideLen
                     let s = world.surface(at: position, room: room)
@@ -255,6 +284,31 @@ public final class Simulation {
             events.append(.reachedExit)
         }
         return events
+    }
+
+    /// Sideways nudge toward the clear part of a nearby opening the player is walking toward,
+    /// so imprecise aim (only eight directions) still passes through doorways.
+    private func doorwayAssist(direction f: Vec2, dt: Double) -> Vec2 {
+        var best = Vec2.zero
+        var bestAhead = Double.infinity
+        for di in world.doorwaysByRoom[room] {
+            let d = world.doorways[di]
+            let axis = (d.segment.b - d.segment.a).normalized
+            let rel = position - d.center
+            var n = Vec2(-axis.y, axis.x)
+            if rel.dot(n) > 0 { n = -n }          // n points from the player's side through the opening
+            let ahead = -rel.dot(n)
+            guard ahead < tuning.doorAssistRange, f.dot(n) > cos(tuning.doorAssistAngle) else { continue }
+            let lateral = rel.dot(axis)
+            guard abs(lateral) < d.width / 2 + 0.7 else { continue }
+            let half = max(0, d.width / 2 - world.playerRadius - 0.08)
+            let excess = lateral > half ? lateral - half : (lateral < -half ? lateral + half : 0)
+            guard excess != 0, ahead < bestAhead else { continue }
+            let shift = min(abs(excess), tuning.doorAssistSpeed * dt)
+            best = axis * (excess > 0 ? -shift : shift)
+            bestAhead = ahead
+        }
+        return best
     }
 
     /// Debug/test helper: place the player directly.
