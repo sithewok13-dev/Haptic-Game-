@@ -36,7 +36,7 @@ These checks need a real iPhone and a person. Wear headphones and keep your eyes
 - [ ] The vent room is recognisable by its hum and its metal floor. You can leave it and carry on.
 - [ ] At the junction, the two routes sound different: a cold draft and outside sounds one way, a buzzing light the other.
 - [ ] The storeroom is a safe dead end. You can turn around and find the way back.
-- [ ] Retrace: walk back to the dripping room. Is it recognisable? Does the aid say "You've been here before"?
+- [ ] Retrace: walk back to the dripping room. Is it recognisable? Does the two-finger tap say "Pump room, again"?
 - [ ] Hidden sounds never seem to come from straight through a wall.
 - [ ] The stairs feel like stairs (slower, stone steps). The air and outdoor sound grow.
 - [ ] Reaching the top is unmistakable (door creak, rush of air, chord, vibration swell, then speech).
