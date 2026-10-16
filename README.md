@@ -39,14 +39,14 @@ The game explains these in a short spoken practice in the starting room.
 
 | Gesture | Action |
 |---|---|
-| Hold one finger still | Walk forward (drag sideways while walking to steer) |
-| Lift | Stop and listen |
-| Drag left/right (starting with a drag) | Turn on the spot (never walks) |
-| Two-finger swipe left/right | Turn 90° to face along the walls |
-| Two-finger swipe down | Turn around |
-| Two-finger tap | Sense surroundings (spoken) |
+| Hold one finger | Walk forward, always straight (finger drift is ignored) |
+| Lift | Stop |
+| Swipe left / right | Turn 45° (says the new direction, e.g. "north-east") |
+| Swipe down | Turn around |
+| Tap | Tap your cane: an echo from the wall ahead (quick echo = close, none = open space) |
+| Two-finger tap | Where am I? (room, facing, nearby walls and openings, sounds in this room) |
 | Two-finger hold | Pause menu / resume |
-| Pause menu: swipe left/right, double-tap | Options: resume, controls, vibration, wall sense, turning speed, skip practice, restart, developer map |
+| Pause menu: swipe left/right, double-tap | Options: resume, controls, vibration, wall sense, 45°/90° turns, say direction, say room names, skip practice, restart, developer map |
 | After escaping: double-tap | Play again |
 
 ## Running the checks without Xcode

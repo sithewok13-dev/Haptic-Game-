@@ -15,9 +15,11 @@ These checks need a real iPhone and a person. Wear headphones and keep your eyes
 
 - [ ] The intro is understandable and short enough.
 - [ ] Holding one finger walks within a moment. Lifting stops immediately.
-- [ ] No walking happens when you start a touch by dragging.
+- [ ] Swipes turn reliably and the spoken direction matches what you expected. No walking happens from a swipe.
+- [ ] Holding to walk goes straight even if your finger drifts.
 - [ ] Footsteps sound wet and match your pace.
 - [ ] You can find the dripping by turning, and tell when it is ahead.
+- [ ] The cane tap: can you tell a close wall from a far one, and hear when there's no wall (an opening)?
 - [ ] **Front/back:** with the drip behind you, do you know it's behind? (yes / no / unsure)
 - [ ] Walking toward the drip makes it clearly louder and closer.
 - [ ] Walking into a wall gives one firm knock (sound + vibration), not a buzz. Holding against the wall adds nothing more.
@@ -26,7 +28,7 @@ These checks need a real iPhone and a person. Wear headphones and keep your eyes
 ## Exploring
 
 - [ ] Two-finger tap gives a short, useful description that doesn't give away the route.
-- [ ] Two-finger swipe left/right turns 90° and leaves you facing along the walls. Swipe down turns you around.
+- [ ] Room names announced on entry help you know where you are. Swipe down turns you around.
 - [ ] The small tick when facing along a wall is noticeable but not annoying.
 - [ ] You can find the opening out of the first room by sound (other sounds come through it).
 - [ ] The corridor feels different (wooden boards, narrower sound).

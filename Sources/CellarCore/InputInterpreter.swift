@@ -24,11 +24,12 @@ public enum Gesture: Equatable {
     case walkBegan
     /// Finger lifted (or a second finger landed): stop walking.
     case walkEnded
-    /// Horizontal drag in points (positive = right).
+    /// Fine turn in points (positive = right). Not produced by touch input; used by the
+    /// autopilot and tests.
     case turn(points: Double)
     case tap
     case doubleTap
-    /// Quick one-finger flick (used in menus).
+    /// Quick one-finger flick: turns in the world, moves between options in menus.
     case swipe(SwipeDirection)
     case twoFingerTap
     case twoFingerSwipe(SwipeDirection)
@@ -38,12 +39,12 @@ public enum Gesture: Equatable {
 public struct InputTuning: Equatable {
     /// Hold still this long before walking starts.
     public var walkDelay = 0.18
-    /// Movement (points) before a touch is treated as a drag rather than a hold.
-    public var dragSlop = 12.0
+    /// Movement (points) before a touch is treated as a swipe attempt rather than a hold.
+    public var dragSlop = 20.0
     public var tapMaxDuration = 0.3
     public var doubleTapWindow = 0.4
     public var swipeMinDistance = 40.0
-    public var swipeMaxDuration = 0.45
+    public var swipeMaxDuration = 0.6
     public var twoFingerHoldTime = 0.8
     public var twoFingerHoldSlop = 25.0
     /// Fingers landing within this window count as one multi-finger gesture.
@@ -55,8 +56,8 @@ public struct InputTuning: Equatable {
 ///
 /// Rules (designed to avoid accidental motion):
 /// - A touch that stays still for `walkDelay` walks; lifting stops at once.
-/// - A touch that starts by dragging sideways only turns; it never starts walking.
-/// - While walking, sideways drag steers.
+/// - While walking, finger drift is ignored: there is no steering, so walking is always straight.
+/// - A touch that moves before walking starts can only become a swipe; it never walks.
 /// - Any second finger stops walking and makes the whole touch a two-finger gesture.
 public final class InputInterpreter {
     public var tuning = InputTuning()
@@ -124,26 +125,13 @@ public final class InputInterpreter {
 
         case .moved:
             guard var t = touches[s.id] else { return [] }
-            let dx = s.x - t.x
             t.x = s.x
             t.y = s.y
             touches[s.id] = t
-            guard s.id == primary else { break }
-            switch mode {
-            case .pending:
-                let tx = t.x - t.startX, ty = t.y - t.startY
-                if (tx * tx + ty * ty).squareRoot() > tuning.dragSlop {
-                    mode = .dragging
-                    if abs(tx) >= abs(ty) { out.append(.turn(points: tx)) }
-                }
-            case .walking:
-                out.append(.turn(points: dx))
-            case .dragging:
-                let tx = t.x - t.startX, ty = t.y - t.startY
-                // Only sideways movement turns; mostly-vertical drags are ignored.
-                if abs(tx) >= abs(ty) * 0.5 { out.append(.turn(points: dx)) }
-            default:
-                break
+            guard s.id == primary, mode == .pending else { break }
+            let tx = t.x - t.startX, ty = t.y - t.startY
+            if (tx * tx + ty * ty).squareRoot() > tuning.dragSlop {
+                mode = .dragging
             }
 
         case .ended, .cancelled:

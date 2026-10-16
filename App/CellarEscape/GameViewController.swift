@@ -178,6 +178,8 @@ final class GameViewController: UIViewController {
                 audio?.setWorldActive(active)
             case .enteredRoom(let r):
                 audio?.setAcoustics(world.rooms[r].acoustics)
+            case .caneTap(let echo, let distance):
+                playCane(echo: echo, distance: distance)
             case .completion:
                 audio?.play("completion", at: ListenerPoint(right: 0, forward: 1.5), gain: 1, reverbBlend: 0.3)
                 haptics.play(.completion)
@@ -228,6 +230,21 @@ final class GameViewController: UIViewController {
         }
         if selfTestMode, case .threshold(_, let to) = e {
             print("SELFTEST entered \(world.rooms[to].id) at \(sim.position)")
+        }
+    }
+
+    /// Cane tap at the feet, then an echo from the wall ahead. The delay is exaggerated
+    /// (about 50 ms per metre) so distance is easy to hear: quick echo = close, none = open.
+    private func playCane(echo: Vec2?, distance: Double?) {
+        audio?.play("caneTap", at: ListenerPoint(right: 0.1, forward: 0.5), height: -1.0, gain: 0.7, reverbBlend: 0.25)
+        guard let echo, let distance else { return }
+        let sim = session.sim
+        let point = ListenerPoint(world: echo, listener: sim.position, heading: sim.heading)
+        let delay = 0.03 + distance * 0.05
+        let gain = Float(max(0.15, 0.75 * (1 - distance / GameSession.caneRange)))
+        let muffle = Float(min(0.6, distance / GameSession.caneRange * 0.6))
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.audio?.play("caneEcho", at: point, gain: gain, reverbBlend: 0.15, muffle: muffle)
         }
     }
 

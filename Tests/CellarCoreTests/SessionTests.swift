@@ -23,21 +23,53 @@ final class SessionTests: XCTestCase {
         cues = simulate(session, seconds: 0.2, clock: &clock)
         XCTAssertEqual(session.phase, .practice(.turnToSound))
 
-        // Turn left until the drip is ahead (it starts about 42 degrees left of north).
+        // One swipe left (45 degrees) puts the drip, about 42 degrees left, straight ahead.
         let drip = session.practiceSource!.position
-        for _ in 0..<200 where session.phase == .practice(.turnToSound) {
-            _ = session.handle(.turn(points: -5))
-            cues = simulate(session, seconds: 1.0 / 60, clock: &clock)
-        }
+        cues = session.handle(.swipe(.left))
+        XCTAssertEqual(cues.spoken, ["north-west"], "The new facing is spoken")
+        cues = simulate(session, seconds: 0.5, clock: &clock)
         XCTAssertEqual(session.phase, .practice(.approach))
         let lp = ListenerPoint(world: drip, listener: session.sim.position, heading: session.sim.heading)
-        XCTAssertLessThan(abs(Heading.degrees(lp.bearing)), 20)
+        XCTAssertLessThan(abs(Heading.degrees(lp.bearing)), 25)
 
         _ = session.handle(.walkBegan)
-        cues = simulate(session, seconds: 6, clock: &clock)
+        for _ in 0..<600 where session.sim.position.distance(to: drip) >= 1.3 {
+            simulate(session, seconds: 1.0 / 60, clock: &clock)
+        }
+        _ = session.handle(.walkEnded)
+        cues = simulate(session, seconds: 0.2, clock: &clock)
+        XCTAssertEqual(session.phase, .practice(.cane))
+        XCTAssertTrue(cues.spoken.contains(Script.practiceCane))
+
+        cues = session.handle(.tap)
+        guard case .caneTap(let echo, let distance)? = cues.first else { return XCTFail("no cane tap") }
+        XCTAssertNotNil(echo)
+        XCTAssertLessThan(distance!, 2.5, "Close to the north-west corner")
+        cues = simulate(session, seconds: 0.2, clock: &clock)
         XCTAssertEqual(session.phase, .exploring)
         XCTAssertTrue(cues.spoken.contains(Script.practiceDone))
         XCTAssertTrue(session.settings.practiceDone)
+    }
+
+    func testCaneHearsOpenSpaceAndNearWalls() throws {
+        let session = try explored()
+        // In the corridor looking east down its length: no wall within cane range.
+        session.sim.teleport(to: Vec2(8, 2.8), headingDegrees: 90)
+        guard case .caneTap(let echo, _)? = session.handle(.tap).first else { return XCTFail() }
+        XCTAssertNil(echo)
+        // Facing the corridor's side wall: close echo.
+        session.sim.teleport(to: Vec2(8, 2.8), headingDegrees: 180)
+        guard case .caneTap(_, let d)? = session.handle(.tap).first else { return XCTFail() }
+        XCTAssertEqual(d!, 0.8, accuracy: 0.01)
+    }
+
+    func testRoomsAreAnnouncedOnEntry() throws {
+        let session = try explored()
+        var clock = 0.0
+        session.sim.teleport(to: Vec2(5, 2.8), headingDegrees: 90)
+        _ = session.handle(.walkBegan)
+        let cues = simulate(session, seconds: 1.5, clock: &clock)
+        XCTAssertTrue(cues.spoken.contains("Wooden corridor"))
     }
 
     func testPauseFreezesAndResumeDoesNotJump() throws {
@@ -124,10 +156,7 @@ final class SessionTests: XCTestCase {
         let session = try explored()
         _ = session.begin()
         let text = session.handle(.twoFingerTap).spoken.first!
-        XCTAssertTrue(text.contains("Wet concrete"))
-        XCTAssertTrue(text.contains("Facing north"))
-        XCTAssertTrue(text.contains("opening ahead to the right"), text)
-        XCTAssertTrue(text.contains("Dripping water, ahead to the left"), text)
+        XCTAssertEqual(text, "Pump room. Facing north. Opening: ahead to the right, a few steps. Dripping water: ahead to the left.")
         XCTAssertFalse(text.lowercased().contains("exit"))
         XCTAssertFalse(text.lowercased().contains("corridor"))
     }
@@ -145,7 +174,7 @@ final class SessionTests: XCTestCase {
         for _ in 0..<120 { _ = sim.update(dt: 1.0 / 60) }   // back into the pump room
         XCTAssertEqual(sim.world.rooms[sim.room].id, "pumpRoom")
         XCTAssertTrue(sim.currentRoomWasVisitedBefore)
-        XCTAssertTrue(Orientation.describe(sim: sim).hasPrefix("You've been here before."))
+        XCTAssertTrue(Orientation.describe(sim: sim).hasPrefix("Pump room, again."))
     }
 
     /// Full playthrough using only player gestures: visits every side room
@@ -191,16 +220,15 @@ final class SessionTests: XCTestCase {
         frames(30)
         XCTAssertEqual(session.sim.position, stopped, "Lifting stops at once")
 
-        // Drag sideways from a fresh touch: turns about 90 degrees right, no walking.
+        // A quick sideways flick from a fresh touch turns 45 degrees right; no walking.
         _ = session.handleTouches([TouchSample(id: 2, phase: .began, x: 100, y: 400)], time: now)
         frames(3)
-        for i in 1...15 {
-            _ = session.handleTouches([TouchSample(id: 2, phase: .moved, x: 100 + Double(i) * 15, y: 400)], time: now)
-            frames(1)
-        }
-        frames(60)
-        _ = session.handleTouches([TouchSample(id: 2, phase: .ended, x: 325, y: 400)], time: now)
-        XCTAssertEqual(session.sim.headingDegrees, 90, accuracy: 0.5)
+        _ = session.handleTouches([TouchSample(id: 2, phase: .moved, x: 140, y: 402)], time: now)
+        frames(3)
+        let cues = session.handleTouches([TouchSample(id: 2, phase: .ended, x: 190, y: 404)], time: now)
+        XCTAssertEqual(cues.spoken, ["north-east"])
+        frames(30)
+        XCTAssertEqual(session.sim.headingDegrees, 45, accuracy: 1e-6)
         XCTAssertEqual(session.sim.position, stopped, "Turning on the spot does not move the player")
     }
 

@@ -96,24 +96,30 @@ final class SimulationTests: XCTestCase {
         XCTAssertLessThanOrEqual(sim.position.distance(to: p), 0.05 * sim.tuning.walkSpeed + 1e-9)
     }
 
-    func testSnapTurnsLandOnWallAlignedHeadings() throws {
+    func testSwipeTurnsLandOnEightDirections() throws {
         let sim = Simulation(world: try Fixtures.basement())
-        sim.turn(byDegrees: 37)
+        XCTAssertEqual(sim.snapTurn(direction: 1), 45)
+        _ = step(sim, seconds: 1)
+        XCTAssertEqual(sim.headingDegrees, 45, accuracy: 1e-6)
         sim.snapTurn(direction: 1)
         var events = step(sim, seconds: 1)
         XCTAssertEqual(sim.headingDegrees, 90, accuracy: 1e-6)
-        XCTAssertTrue(events.contains(.aligned(cardinal: 1)))
+        XCTAssertTrue(events.contains(.aligned(cardinal: 1)), "Facing along the walls gives a tick")
+        // Quick repeated swipes add up exactly.
+        sim.snapTurn(direction: -1)
+        sim.snapTurn(direction: -1)
         sim.snapTurn(direction: -1)
         _ = step(sim, seconds: 1)
-        XCTAssertEqual(sim.headingDegrees, 0, accuracy: 1e-6)
-        sim.turn(byDegrees: -5)
-        sim.snapTurn(direction: -1) // within 10 degrees of north: go on to west
-        _ = step(sim, seconds: 1)
-        XCTAssertEqual(sim.headingDegrees, 270, accuracy: 1e-6)
-        sim.turnAround()
+        XCTAssertEqual(sim.headingDegrees, 315, accuracy: 1e-6)
+        XCTAssertEqual(sim.turnAround(), 135)
         events = step(sim, seconds: 1.5)
-        XCTAssertEqual(sim.headingDegrees, 90, accuracy: 1e-6)
+        XCTAssertEqual(sim.headingDegrees, 135, accuracy: 1e-6)
         XCTAssertTrue(events.contains(.pivot), "Turning on the spot shuffles the feet")
+        // A slightly-off heading snaps onto the grid.
+        sim.turn(byDegrees: 7)
+        XCTAssertEqual(sim.snapTurn(direction: 1, step: 90), 180, accuracy: 1e-6)
+        _ = step(sim, seconds: 1)
+        XCTAssertEqual(sim.headingDegrees, 180, accuracy: 1e-6)
     }
 
     func testAlignedTickWhenDraggingAcrossNorth() throws {

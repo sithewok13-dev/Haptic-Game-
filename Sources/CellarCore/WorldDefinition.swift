@@ -45,6 +45,8 @@ public struct SurfaceZone: Codable, Equatable {
 
 public struct RoomDefinition: Codable, Equatable {
     public var id: String
+    /// Short spoken name ("the corridor"), announced on entry and by the orientation aid.
+    public var name: String?
     /// Spoken by the orientation aid; describes what the player can sense, never the route.
     public var description: String
     public var rect: Rect

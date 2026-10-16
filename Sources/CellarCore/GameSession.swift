@@ -8,6 +8,8 @@ public enum Cue: Equatable {
     /// Fade the world's sound in (true) or out (false).
     case worldAudio(active: Bool)
     case enteredRoom(Int)
+    /// Cane tap: `echo` is where the wall ahead was hit (nil = open space ahead), `distance` in metres.
+    case caneTap(echo: Vec2?, distance: Double?)
     case completion
     case menuTick
     case settingsChanged(GameSettings)
@@ -16,7 +18,7 @@ public enum Cue: Equatable {
 }
 
 public enum PracticeStep: Int, Equatable {
-    case walk, stop, turnToSound, approach
+    case walk, stop, turnToSound, approach, cane
 }
 
 public enum Phase: Equatable {
@@ -31,24 +33,25 @@ public enum PauseReason: Equatable {
 }
 
 public enum MenuItem: Equatable {
-    case resume, controls, haptics, wallSense, turnSpeed, skipPractice, restart, developerMap
+    case resume, controls, haptics, wallSense, turnStep, speakDirection, announceRooms, skipPractice, restart, developerMap
 }
 
 public enum Script {
-    public static let controls = "Hold one finger still to walk. Lift it to stop and listen. Drag left or right to turn. "
-        + "Swipe two fingers left or right to turn and face along the walls. Swipe two fingers down to turn around. "
-        + "Tap two fingers to sense your surroundings. Hold two fingers to pause."
-    public static let intro = "You wake on a cold, wet floor, in complete darkness. "
-        + "Headphones help: sounds keep their place around you as you turn. "
-        + "Hold one finger still on the screen to walk forward."
-    public static let practiceStop = "Good. Lift your finger to stop and listen."
-    public static let practiceTurn = "Drag a finger left or right to turn on the spot. "
-        + "Somewhere in this room, water is dripping. Turn until it is straight ahead of you."
-    public static let practiceApproach = "That's it. Now walk toward the dripping, and stop when you are close."
-    public static let practiceDone = "You found the pipe. If you walk into a wall you'll feel a bump; nothing here can hurt you. "
-        + "Swipe two fingers left or right to turn and face along the walls, or down to turn around. "
-        + "Tap two fingers to sense your surroundings. Hold two fingers to pause. Find the way out."
-    public static let practiceLeft = "Tap two fingers to sense your surroundings. Hold two fingers to pause."
+    public static let controls = "Hold one finger on the screen to walk. Lift it to stop. "
+        + "Swipe left or right to turn. Swipe down to turn around. "
+        + "Tap once to tap your cane and hear how far the wall ahead is. "
+        + "Tap with two fingers to hear where you are. Hold two fingers to pause."
+    public static let intro = "You wake on a cold, wet floor, in complete darkness. Wear headphones. "
+        + "Hold one finger on the screen to walk forward."
+    public static let practiceStop = "Good. Lift your finger to stop."
+    public static let practiceTurn = "Swipe left or right to turn. Somewhere in this room, water is dripping. "
+        + "Turn until the dripping is straight ahead of you."
+    public static let practiceApproach = "That's it. Now hold to walk toward the dripping. Stop when you're close."
+    public static let practiceCane = "You found the pipe. Now tap the screen once. That's your cane. "
+        + "The echo tells you how far away the wall in front of you is. A quick echo means close. No echo means open space."
+    public static let practiceDone = "Good. Swipe down to turn around. Tap with two fingers to hear where you are. "
+        + "Hold two fingers to pause. Walls stop you safely; nothing here can hurt you. Find the way out."
+    public static let practiceLeft = "Tap with two fingers to hear where you are. Hold two fingers to pause."
     public static let completion = "Cold night air. You're outside. You found the way out. "
         + "Double-tap to explore the basement again."
     public static let pausedHelp = "Swipe left or right for options, double-tap to choose. Hold two fingers to resume."
@@ -70,6 +73,7 @@ public final class GameSession {
     private var promptTime = 0.0
     private var promptRepeats = 0
     private var turnedDuringStep = 0.0
+    private var caneTapped = false
     private var delayedSpeech: (time: Double, text: String)?
 
     public init(world: World, settings: GameSettings = GameSettings()) {
@@ -91,7 +95,7 @@ public final class GameSession {
             return [.worldAudio(active: true), .enteredRoom(sim.room), .speak(Script.intro, interrupt: true)]
         }
         return [.worldAudio(active: true), .enteredRoom(sim.room),
-                .speak("You wake in darkness. Tap two fingers to sense your surroundings. Hold two fingers to pause.", interrupt: true)]
+                .speak("You wake in darkness. Tap with two fingers to hear where you are. Hold two fingers to pause.", interrupt: true)]
     }
 
     // MARK: - Input
@@ -123,17 +127,24 @@ public final class GameSession {
         case .walkEnded:
             sim.setWalking(false)
         case .turn(let points):
-            let deg = points * settings.turnSpeed.degreesPerPoint
+            // Fine turning: used by the autopilot and tests, not produced by touch input.
+            let deg = points * GameSettings.degreesPerPoint
             turnedDuringStep += abs(deg)
             sim.turn(byDegrees: deg)
-        case .twoFingerSwipe(let dir):
+        case .swipe(let dir), .twoFingerSwipe(let dir):
+            let target: Double
             switch dir {
-            case .left: sim.snapTurn(direction: -1)
-            case .right: sim.snapTurn(direction: 1)
-            case .down: sim.turnAround()
-            case .up: break
+            case .left: target = sim.snapTurn(direction: -1, step: Double(settings.turnStep))
+            case .right: target = sim.snapTurn(direction: 1, step: Double(settings.turnStep))
+            case .down: target = sim.turnAround(step: Double(settings.turnStep))
+            case .up: return []
             }
-            turnedDuringStep += 90
+            turnedDuringStep += Double(settings.turnStep)
+            if settings.speakDirection {
+                return [.speak(Orientation.compassWord(headingDegrees: target), interrupt: true)]
+            }
+        case .tap:
+            return [caneTap()]
         case .twoFingerTap:
             return [.speak(Orientation.describe(sim: sim), interrupt: true)]
         case .twoFingerHold:
@@ -144,10 +155,21 @@ public final class GameSession {
         return []
     }
 
+    public static let caneRange = 8.0
+
+    private func caneTap() -> Cue {
+        caneTapped = true
+        let dir = Heading.forward(sim.heading)
+        if let hit = sim.world.raycast(from: sim.position, direction: dir, maxDistance: GameSession.caneRange) {
+            return .caneTap(echo: hit.point, distance: hit.distance)
+        }
+        return .caneTap(echo: nil, distance: nil)
+    }
+
     // MARK: - Pause menu
 
     public var menuItems: [MenuItem] {
-        var items: [MenuItem] = [.resume, .controls, .haptics, .wallSense, .turnSpeed]
+        var items: [MenuItem] = [.resume, .controls, .haptics, .wallSense, .turnStep, .speakDirection, .announceRooms]
         if case .practice = resumePhase { items.append(.skipPractice) }
         items += [.restart, .developerMap]
         return items
@@ -159,7 +181,9 @@ public final class GameSession {
         case .controls: return "Hear the controls"
         case .haptics: return "Vibration: " + (settings.haptics ? "on" : "off")
         case .wallSense: return "Wall sense sound: " + (settings.wallSense ? "on" : "off")
-        case .turnSpeed: return "Turning speed: " + settings.turnSpeed.rawValue
+        case .turnStep: return "Each turn: \(settings.turnStep) degrees"
+        case .speakDirection: return "Say direction after turning: " + (settings.speakDirection ? "on" : "off")
+        case .announceRooms: return "Say room names: " + (settings.announceRooms ? "on" : "off")
         case .skipPractice: return "Skip practice"
         case .restart: return "Restart from the beginning"
         case .developerMap: return "Developer map: " + (settings.developerMap ? "on" : "off")
@@ -236,9 +260,14 @@ public final class GameSession {
         case .wallSense:
             settings.wallSense.toggle()
             return [.settingsChanged(settings), .speak(label(item), interrupt: true)]
-        case .turnSpeed:
-            let all = TurnSpeed.allCases
-            settings.turnSpeed = all[(all.firstIndex(of: settings.turnSpeed)! + 1) % all.count]
+        case .turnStep:
+            settings.turnStep = settings.turnStep == 45 ? 90 : 45
+            return [.settingsChanged(settings), .speak(label(item), interrupt: true)]
+        case .speakDirection:
+            settings.speakDirection.toggle()
+            return [.settingsChanged(settings), .speak(label(item), interrupt: true)]
+        case .announceRooms:
+            settings.announceRooms.toggle()
             return [.settingsChanged(settings), .speak(label(item), interrupt: true)]
         case .developerMap:
             settings.developerMap.toggle()
@@ -290,6 +319,9 @@ public final class GameSession {
                 switch e {
                 case .threshold(_, let to):
                     cues.append(.enteredRoom(to))
+                    if settings.announceRooms {
+                        cues.append(.speak(Orientation.roomName(sim.world.rooms[to], capitalized: true), interrupt: true))
+                    }
                 case .reachedExit:
                     _ = input.reset()
                     phase = .completed
@@ -323,7 +355,7 @@ public final class GameSession {
         case .turnToSound:
             if let src = practiceSource {
                 let lp = ListenerPoint(world: src.position, listener: sim.position, heading: sim.heading)
-                if abs(Heading.degrees(lp.bearing)) < 20 && turnedDuringStep >= 15 && !sim.isSnapTurning {
+                if abs(Heading.degrees(lp.bearing)) < 25 && turnedDuringStep >= 15 && !sim.isSnapTurning {
                     next = .approach
                     line = Script.practiceApproach
                 }
@@ -332,10 +364,16 @@ public final class GameSession {
             }
         case .approach:
             let close = practiceSource.map { $0.position.distance(to: sim.position) < 1.4 } ?? true
-            if close {
+            if close && !sim.isWalking {
+                next = .cane
+                line = Script.practiceCane
+                caneTapped = false
+            }
+        case .cane:
+            if caneTapped {
                 settings.practiceDone = true
                 phase = .exploring
-                return [.settingsChanged(settings), .speak(Script.practiceDone, interrupt: true)]
+                return [.settingsChanged(settings), .speak(Script.practiceDone, interrupt: false)]
             }
         }
         if let n = next {
@@ -351,10 +389,11 @@ public final class GameSession {
             promptRepeats += 1
             let text: String
             switch step {
-            case .walk: text = "Hold one finger still on the screen to walk forward."
+            case .walk: text = "Hold one finger on the screen to walk forward."
             case .stop: text = Script.practiceStop
             case .turnToSound: text = Script.practiceTurn
             case .approach: text = Script.practiceApproach
+            case .cane: text = "Tap the screen once to tap your cane."
             }
             return [.speak(text, interrupt: false)]
         }

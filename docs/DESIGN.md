@@ -11,32 +11,35 @@ This is a strong premise because the world itself is the puzzle. Its main risk i
 | Risk | Mitigation in this build | Still needs a human test |
 |---|---|---|
 | **Front/back confusion.** HRTF on generic ears often can't tell a sound ahead from one behind. | Turning is the disambiguator: a sound ahead moves *the opposite way* to a sound behind as you turn. "Sense surroundings" (two-finger tap) names in-room sounds as "ahead to the left", "behind you" and so on. The offline preview also dulls rear sounds. | Yes. Results vary by person and headphone model. |
-| **Getting lost / losing facing.** | Facing snaps to the wall directions with a two-finger swipe. A tiny tick (felt, or a faint click if vibration is off) marks every time you face along the walls. The orientation aid gives a compass word. | Yes |
+| **Getting lost / losing facing.** | Facing is limited to eight directions and each turn speaks the new direction. Rooms announce their name. A tiny tick marks facing along the walls. The cane tap gives the distance to the wall ahead. | Yes |
 | **Hidden sources pulling you into walls.** | Sound travels only through openings. A source in another room is heard *from the opening it comes through*, at the loudness of the walking-path distance, and muffled by how sharply the path bends. Tests check that direction and level never jump while crossing a threshold. | Partly (whether it reads as "through the doorway") |
 | **Exit audible everywhere.** | The draft and outside sounds reach the start room at about 3% of their level near the stairs (a test enforces < 30% of the junction level), arriving muffled from the doorway direction. | |
 | **Can't find openings.** | Optional "wall sense": a soft hush from walls within ~2 m on the left, right and ahead. Walking along a wall, the hush drops away at an opening and the next room's sounds flow in. Brushing a wall gives a hand-scrape sound and a light tap. | Yes (is it subtle enough, and useful enough?) |
-| **Accidental motion.** | Walking needs a *still* hold for 0.18 s. A touch that starts with a drag only turns and can never start walking. A second finger stops walking at once. | Yes |
+| **Accidental motion.** | Walking needs a still hold for 0.18 s. Finger drift while walking is ignored. A touch that moves first can only be a swipe. A second finger stops walking at once. | Yes |
 | **Fatigue from holding.** | Rooms are small (the longest straight walk is about 12 m, roughly 10 s). Lifting stops instantly, with no penalty. | Yes |
 | **Repetitive wall impacts.** | One bump per contact. It re-arms only after stepping away from the wall or standing still for 1.2 s. Pushing into a wall makes no footsteps. | |
 | **Speech clutter.** | Speech only in the short practice, on request (two-finger tap), in the pause menu, and at completion. World audio ducks while speaking. | |
 
-## Controls (evaluated and adjusted)
+## Controls (revised after the first iPhone playtest)
 
-The proposal was: one finger held to walk, drag sideways to turn, lift to stop. That works. Taken literally, though, it starts walking on every touch and couples turning with walking. The adjusted vocabulary:
+The first build used continuous drag-to-turn and steering while walking. On the phone that proved confusing: finger drift steered you, and you couldn't tell how far you had turned. The controls are now discrete and say what happened:
 
 | Gesture | Action |
 |---|---|
-| Hold one finger still (about 0.2 s) | Walk forward. Drag sideways while walking to steer. |
-| Lift the finger | Stop immediately. |
-| Drag one finger left/right (starting with a drag) | Turn on the spot. This touch never walks. |
-| Two-finger swipe left/right | Turn to face the next wall direction (90° steps, aligned with the walls) |
-| Two-finger swipe down | Turn around |
-| Two-finger tap | Sense surroundings (spoken) |
-| Two-finger hold (about 0.8 s) | Pause menu / resume |
-| *In the pause menu:* one-finger swipe left/right, double-tap | Move between options, choose |
-| *After escaping:* double-tap | Play again |
+| Hold one finger | Walk forward, always straight (finger drift is ignored) |
+| Lift | Stop |
+| Swipe left / right | Turn 45° (says the new direction, e.g. "north-east") |
+| Swipe down | Turn around |
+| Tap | Tap your cane: an echo from the wall ahead (quick echo = close, none = open space) |
+| Two-finger tap | Where am I? (room, facing, nearby walls and openings, sounds in this room) |
+| Two-finger hold | Pause menu / resume |
+| Pause menu: swipe left/right, double-tap | Options: resume, controls, vibration, wall sense, 45°/90° turns, say direction, say room names, skip practice, restart, developer map |
+| After escaping: double-tap | Play again |
 
-There is no walking backwards. Moving away from a sound is "turn around, walk". That keeps the vocabulary small and avoids a second hold gesture that's easy to trigger by accident. Turning speed is adjustable (slow/normal/fast). With VoiceOver on, the game view uses *direct interaction*, so these gestures reach the game.
+- Facing is always one of eight directions (or four, in 90° mode), so walking is always straight and easy to retrace.
+- Each turn speaks the new facing, which can be switched off. Rooms announce their short name on entry, which can also be switched off.
+- The cane tap is real echolocation in the world model: a ray ahead finds the nearest wall within 8 m, and the echo plays from that point after an exaggerated delay (about 50 ms per metre). Through an opening, there is no echo.
+- With VoiceOver on, the game view uses direct interaction so these gestures reach the game.
 
 ## Platform choice: native Swift on iOS
 

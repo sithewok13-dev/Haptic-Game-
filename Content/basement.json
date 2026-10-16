@@ -7,6 +7,7 @@
   "rooms": [
     {
       "id": "pumpRoom",
+      "name": "pump room",
       "description": "Wet concrete underfoot. A small square room that smells of rust.",
       "rect": { "x0": 0, "y0": 0, "x1": 6, "y1": 5 },
       "surface": "wetConcrete",
@@ -14,6 +15,7 @@
     },
     {
       "id": "corridor",
+      "name": "wooden corridor",
       "description": "Old wooden boards. A narrow passage.",
       "rect": { "x0": 6, "y0": 2, "x1": 18, "y1": 3.6 },
       "surface": "woodBoards",
@@ -21,6 +23,7 @@
     },
     {
       "id": "ventRoom",
+      "name": "fan room",
       "description": "Metal grating underfoot. A cramped side room.",
       "rect": { "x0": 8, "y0": 3.6, "x1": 13, "y1": 8.6 },
       "surface": "metalGrate",
@@ -28,6 +31,7 @@
     },
     {
       "id": "junction",
+      "name": "junction",
       "description": "Gritty concrete. A wider space where passages meet.",
       "rect": { "x0": 18, "y0": 0, "x1": 23, "y1": 6 },
       "surface": "grit",
@@ -35,6 +39,7 @@
     },
     {
       "id": "storage",
+      "name": "storeroom",
       "description": "Dry, dusty concrete. A low storeroom.",
       "rect": { "x0": 17, "y0": -5, "x1": 24, "y1": 0 },
       "surface": "dryConcrete",
@@ -42,6 +47,7 @@
     },
     {
       "id": "stairwell",
+      "name": "stairwell",
       "description": "A tall stone stairwell. Cold air moves here.",
       "rect": { "x0": 19, "y0": 6, "x1": 22, "y1": 12 },
       "surface": "dryConcrete",

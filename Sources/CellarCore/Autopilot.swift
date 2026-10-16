@@ -48,7 +48,7 @@ public final class Autopilot {
         if abs(delta) > 2 {
             let maxTurn = 240 * dt
             let deg = max(-maxTurn, min(maxTurn, delta))
-            out.append(.turn(points: deg / session.settings.turnSpeed.degreesPerPoint))
+            out.append(.turn(points: deg / GameSettings.degreesPerPoint))
         }
         if abs(delta) > 25 {
             if walking { out += stopWalking() }

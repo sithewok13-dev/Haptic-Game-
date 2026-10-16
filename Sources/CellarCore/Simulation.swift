@@ -109,25 +109,32 @@ public final class Simulation {
         applyTurn(degrees)
     }
 
-    /// Turn to the next wall-aligned direction to the right (+1) or left (-1).
-    /// If already within 10 degrees of one, goes to the following one.
-    public func snapTurn(direction: Int) {
-        let c = Heading.degrees(heading)
-        let target: Double
-        if direction > 0 {
-            target = ((c + 10) / 90).rounded(.down) * 90 + 90
-        } else {
-            target = ((c - 10) / 90).rounded(.up) * 90 - 90
-        }
-        snapRemaining = target - c
+    /// Turn one step to the right (+1) or left (-1), landing on a multiple of `step` degrees
+    /// (45 gives eight directions, 90 the four wall directions). Returns the target heading in degrees.
+    @discardableResult
+    public func snapTurn(direction: Int, step: Double = 45) -> Double {
+        let c = currentTargetDegrees
+        // Next grid direction that way; if already within a few degrees of one, the one after.
+        let tolerance = min(10, step / 4)
+        let target = direction > 0
+            ? ((c + tolerance) / step).rounded(.down) * step + step
+            : ((c - tolerance) / step).rounded(.up) * step - step
+        snapRemaining += target - c
+        return Heading.degrees(Heading.normalized(Heading.radians(target)))
     }
 
-    /// Turn around to the wall-aligned direction nearest the opposite heading.
-    public func turnAround() {
-        let c = Heading.degrees(heading)
-        let target = ((c + 180) / 90).rounded() * 90
-        snapRemaining = target - c
+    /// Turn around, landing on a multiple of `step` degrees. Returns the target heading in degrees.
+    @discardableResult
+    public func turnAround(step: Double = 45) -> Double {
+        let c = currentTargetDegrees
+        let target = ((c + 180) / step).rounded() * step
+        snapRemaining += target - c
+        return Heading.degrees(Heading.normalized(Heading.radians(target)))
     }
+
+    /// Heading (unwrapped degrees) the player will face once any turn in progress finishes,
+    /// so quick repeated swipes add up exactly.
+    private var currentTargetDegrees: Double { unwrappedDegrees + snapRemaining }
 
     public var isSnapTurning: Bool { abs(snapRemaining) > 1e-6 }
 

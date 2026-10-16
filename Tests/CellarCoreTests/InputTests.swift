@@ -31,21 +31,31 @@ final class InputTests: XCTestCase {
         XCTAssertEqual(touch(1, .ended, 200, 400), [.walkEnded])
     }
 
-    func testDragFirstOnlyTurnsAndNeverWalks() {
+    func testMovingTouchNeverWalks() {
         _ = touch(1, .began, 200, 400)
         _ = advance(0.05)
-        let g = touch(1, .moved, 230, 402)
-        XCTAssertEqual(g, [.turn(points: 30)])
-        XCTAssertEqual(advance(1.0), [], "Holding still after a turn must not start walking")
-        XCTAssertEqual(touch(1, .moved, 250, 402), [.turn(points: 20)])
-        XCTAssertFalse(touch(1, .ended, 250, 402).contains(.walkEnded))
+        XCTAssertEqual(touch(1, .moved, 230, 402), [], "Fine turning is not produced by touch")
+        XCTAssertEqual(advance(1.0), [], "A touch that moved must not start walking")
+        XCTAssertEqual(touch(1, .ended, 250, 402), [], "Too slow to count as a swipe")
     }
 
-    func testSteeringWhileWalking() {
+    func testWalkingIgnoresFingerDrift() {
         _ = touch(1, .began, 200, 400)
-        _ = advance(0.3)
-        XCTAssertEqual(touch(1, .moved, 190, 400), [.turn(points: -10)])
+        XCTAssertEqual(advance(0.3), [.walkBegan])
+        XCTAssertEqual(touch(1, .moved, 160, 380), [], "No steering while walking")
         XCTAssertTrue(input.isWalking)
+        XCTAssertEqual(touch(1, .ended, 160, 380), [.walkEnded], "Lifting after drift only stops; no swipe")
+    }
+
+    func testSwipesInEveryDirection() {
+        for (dx, dy, dir) in [(70.0, 5.0, SwipeDirection.right), (-70, 0, .left), (4, 80, .down), (0, -80, .up)] {
+            _ = touch(1, .began, 200, 400)
+            _ = advance(0.05)
+            _ = touch(1, .moved, 200 + dx / 2, 400 + dy / 2)
+            _ = advance(0.05)
+            XCTAssertEqual(touch(1, .ended, 200 + dx, 400 + dy), [.swipe(dir)])
+            _ = advance(0.5)
+        }
     }
 
     func testVerticalDragDoesNotTurn() {

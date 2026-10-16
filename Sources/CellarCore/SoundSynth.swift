@@ -11,7 +11,7 @@ public enum SoundSynth {
                                  "wallPresence.0", "wallPresence.1", "wallPresence.2"]
     public static let footstepVariants = 4
     public static let oneShotIDs: [String] = {
-        var ids = ["bump", "brush", "pivot", "threshold", "alignClick", "completion", "menuTick"]
+        var ids = ["bump", "brush", "pivot", "threshold", "alignClick", "completion", "menuTick", "caneTap", "caneEcho"]
         for s in Surface.allCases {
             for v in 0..<footstepVariants { ids.append(footstepID(s, v)) }
         }
@@ -35,6 +35,8 @@ public enum SoundSynth {
         case "threshold": return threshold()
         case "alignClick", "menuTick": return click(freq: id == "menuTick" ? 1800 : 2600)
         case "completion": return completion()
+        case "caneTap": return caneTap(echo: false)
+        case "caneEcho": return caneTap(echo: true)
         default:
             if id.hasPrefix("wallPresence.") {
                 return wallPresence(seed: UInt64(id.split(separator: ".").last.flatMap { Int($0) } ?? 0))
@@ -356,6 +358,22 @@ public enum SoundSynth {
         }
         var x = filtered(raw, [Biquad(.lowpass, freq: 320), Biquad(.lowpass, freq: 500)])
         normalize(&x, peak: 0.6)
+        return toFloat(x)
+    }
+
+    /// A wooden cane tip striking a hard floor. The echo version is duller and softer,
+    /// as if returned from a wall.
+    static func caneTap(echo: Bool) -> [Float] {
+        var rng = RNG(echo ? 97 : 95)
+        var x = [Double](repeating: 0, count: samples(0.18))
+        add(&x, at: 0, burst(&rng, seconds: 0.02, decay: 0.002, filters: [Biquad(.highpass, freq: 1800)], amp: 1))
+        add(&x, at: 0, ping(freq: 1900, decay: 0.012, seconds: 0.08, amp: 0.6))
+        add(&x, at: 0, ping(freq: 3100, decay: 0.006, seconds: 0.05, amp: 0.3))
+        add(&x, at: 0, ping(freq: 420, decay: 0.02, seconds: 0.1, amp: 0.35))
+        if echo {
+            x = filtered(x, [Biquad(.lowpass, freq: 2600), Biquad(.highpass, freq: 300)])
+        }
+        normalize(&x, peak: echo ? 0.7 : 0.9)
         return toFloat(x)
     }
 
