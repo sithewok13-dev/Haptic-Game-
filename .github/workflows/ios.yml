@@ -40,6 +40,8 @@ jobs:
     name: iOS app build, simulator self-test, unsigned IPA
     runs-on: macos-15
     timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Select newest Xcode
@@ -81,6 +83,19 @@ jobs:
           cp -R "$APP" ipa/Payload/
           (cd ipa && zip -qry ../CellarEscape-unsigned.ipa Payload)
           ls -la CellarEscape-unsigned.ipa
+      - name: Publish IPA to the "latest-build" release (stable direct link)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NOTES="Unsigned build from ${GITHUB_REF_NAME} at ${GITHUB_SHA}. Must be signed before installing on an iPhone."
+          if gh release view latest-build >/dev/null 2>&1; then
+            gh release upload latest-build CellarEscape-unsigned.ipa --clobber
+            gh release edit latest-build --notes "$NOTES"
+          else
+            gh release create latest-build CellarEscape-unsigned.ipa --prerelease \
+              --target "$GITHUB_SHA" --title "Latest build (unsigned)" --notes "$NOTES"
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: CellarEscape-unsigned-ipa
