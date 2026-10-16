@@ -319,8 +319,10 @@ public enum SoundSynth {
         add(&x, at: 0, ping(freq: 85, decay: 0.06, seconds: 0.35, amp: 1.0))
         add(&x, at: 0, ping(freq: 170, decay: 0.035, seconds: 0.25, amp: 0.5))
         add(&x, at: 0, burst(&rng, seconds: 0.08, decay: 0.012, filters: [Biquad(.lowpass, freq: 1200)], amp: 0.9))
-        add(&x, at: 0, burst(&rng, seconds: 0.03, decay: 0.005, filters: [Biquad(.highpass, freq: 2500)], amp: 0.25))
-        normalize(&x, peak: 0.9)
+        // Hard crack of the impact on top of the thud.
+        add(&x, at: 0, burst(&rng, seconds: 0.03, decay: 0.004, filters: [Biquad(.highpass, freq: 1800)], amp: 0.9))
+        add(&x, at: 0, ping(freq: 1250, decay: 0.012, seconds: 0.06, amp: 0.35))
+        normalize(&x, peak: 0.95)
         return toFloat(x)
     }
 

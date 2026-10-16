@@ -25,7 +25,7 @@ final class HapticsPlayer {
     private var engine: CHHapticEngine?
     private var engineRunning = false
     private var patterns: [HapticKind: CHHapticPattern] = [:]
-    private let impact = UIImpactFeedbackGenerator(style: .heavy)
+    private let impact = UIImpactFeedbackGenerator(style: .rigid)
     private let lightImpact = UIImpactFeedbackGenerator(style: .light)
 
     init() {
@@ -60,11 +60,13 @@ final class HapticsPlayer {
 
     private func buildPatterns() {
         do {
-            // A solid knock you can't miss: sharp hit, a short heavy body, and a small rebound.
+            // A hard, sharp impact you can't miss: two stacked full-strength hits at maximum
+            // sharpness, a short full-strength body, and a hard rebound tap.
             patterns[.bump] = try CHHapticPattern(events: [
-                event(0, intensity: 1.0, sharpness: 0.55),
-                event(0.004, intensity: 0.8, sharpness: 0.2, duration: 0.12),
-                event(0.09, intensity: 0.5, sharpness: 0.4),
+                event(0, intensity: 1.0, sharpness: 1.0),
+                event(0.012, intensity: 1.0, sharpness: 0.8),
+                event(0.0, intensity: 1.0, sharpness: 0.6, duration: 0.14),
+                event(0.13, intensity: 0.9, sharpness: 1.0),
             ], parameters: [])
             patterns[.brush] = try CHHapticPattern(events: [
                 event(0, intensity: 0.55, sharpness: 0.5),
